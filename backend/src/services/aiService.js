@@ -1,28 +1,64 @@
-const { VertexAI } = require('@google-cloud/vertexai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 let generativeModel = null;
 
 function getModel() {
     if (!generativeModel) {
-        console.log('Initializing Vertex AI Model...');
-        const project = process.env.GOOGLE_CLOUD_PROJECT;
-        const location = 'us-central1';
+        console.log('Initializing Gemini AI Model...');
+        const apiKey = process.env.GEMINI_API_KEY;
 
-        if (!project) {
-            throw new Error('GOOGLE_CLOUD_PROJECT environment variable is missing');
+        if (!apiKey) {
+            throw new Error('GEMINI_API_KEY environment variable is missing. Get one from https://aistudio.google.com/app/apikey');
         }
 
-        const vertexAI = new VertexAI({ project, location });
-        generativeModel = vertexAI.getGenerativeModel({
-            model: 'gemini-1.5-flash-001',
-            generation_config: {
-                max_output_tokens: 8192,
+        const genAI = new GoogleGenerativeAI(apiKey);
+        generativeModel = genAI.getGenerativeModel({
+            model: 'gemini-2.5-flash-preview-09-2025',
+            generationConfig: {
+                maxOutputTokens: 8192,
                 temperature: 0.2,
-                top_p: 0.8,
+                topP: 0.8,
             },
         });
     }
     return generativeModel;
+}
+
+async function summarizeDocument(fileBuffer, mimeType) {
+    const prompt = `You are a helpful assistant for Ethiopian users. You will be provided with a document. Your task is to:
+    1. Read and analyze the core meaning of the document.
+    2. Create a concise summary.
+    3. Translate that summary into natural-sounding Amharic.
+    4. Return ONLY the Amharic text.`;
+
+    try {
+        const model = getModel();
+
+        // Convert buffer to base64
+        const base64Data = fileBuffer.toString('base64');
+
+        const result = await model.generateContent([
+            {
+                inlineData: {
+                    data: base64Data,
+                    mimeType: mimeType
+                }
+            },
+            { text: prompt }
+        ]);
+
+        const response = await result.response;
+        const generatedText = response.text();
+
+        if (!generatedText) {
+            throw new Error('No content in response');
+        }
+
+        return generatedText;
+    } catch (error) {
+        console.error('Error in summarizeDocument:', error);
+        throw error;
+    }
 }
 
 async function summarizeAndTranslate(text) {
@@ -35,24 +71,21 @@ async function summarizeAndTranslate(text) {
     Document Text:
     ${text}`;
 
-    const request = {
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    };
-
     try {
         const model = getModel();
-        const streamingResult = await model.generateContentStream(request);
-        const aggregatedResponse = await streamingResult.response;
-        const candidate = aggregatedResponse.candidates[0];
-        if (candidate && candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
-            return candidate.content.parts[0].text;
-        } else {
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const generatedText = response.text();
+
+        if (!generatedText) {
             throw new Error('No content in response');
         }
+
+        return generatedText;
     } catch (error) {
         console.error('Error in summarizeAndTranslate:', error);
         throw error;
     }
 }
 
-module.exports = { summarizeAndTranslate };
+module.exports = { summarizeDocument, summarizeAndTranslate };

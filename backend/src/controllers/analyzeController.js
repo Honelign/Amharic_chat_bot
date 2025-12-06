@@ -1,6 +1,4 @@
-const axios = require('axios');
-const { extractText } = require('../utils/pdfParser');
-const { summarizeAndTranslate } = require('../services/aiService');
+const { summarizeDocument } = require('../services/aiService');
 const { generateAudio } = require('../services/ttsService');
 const { uploadFile } = require('../services/storageService');
 
@@ -20,16 +18,9 @@ exports.analyzeDocument = async (req, res) => {
         const fileUploadName = `uploads/${userId}/${Date.now()}_${originalFileName}`;
         const fileUrl = await uploadFile(req.file.buffer, fileUploadName);
 
-        // 2. Extract Text
-        console.log('Extracting text...');
-        const text = await extractText(req.file.buffer);
-        if (!text || text.trim().length === 0) {
-            return res.status(400).json({ error: 'Could not extract text from the document.' });
-        }
-
-        // 3. Summarize and Translate
-        console.log('Summarizing with Gemini...');
-        const summaryAmharic = await summarizeAndTranslate(text);
+        // 2. Process document directly with Gemini (no text extraction needed!)
+        console.log('Processing document with Gemini...');
+        const summaryAmharic = await summarizeDocument(req.file.buffer, req.file.mimetype);
 
         // 4. Generate Audio
         console.log('Generating Audio...');
