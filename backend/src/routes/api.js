@@ -12,5 +12,7 @@ const upload = multer({
 });
 
 router.post('/analyze', upload.single('file'), analyzeController.analyzeDocument);
+router.post('/analyze-text', analyzeController.analyzeText);
 
 module.exports = router;
+

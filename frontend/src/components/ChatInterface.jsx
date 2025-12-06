@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, FileText, Play, Square, Loader2, Send } from 'lucide-react';
+import { Upload, FileText, Play, Square, Loader2, Send, Languages } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const ChatInterface = ({ user, onFileUpload, isProcessing, messages }) => {
+const ChatInterface = ({ user, onFileUpload, onTextSubmit, isProcessing, messages }) => {
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
     const [dragging, setDragging] = useState(false);
+    const [selectedLanguage, setSelectedLanguage] = useState('amharic');
+    const [textInput, setTextInput] = useState('');
 
     // Auto scroll to bottom
     const scrollToBottom = () => {
@@ -30,13 +32,27 @@ const ChatInterface = ({ user, onFileUpload, isProcessing, messages }) => {
         setDragging(false);
         const files = e.dataTransfer.files;
         if (files.length > 0) {
-            onFileUpload(files[0]);
+            onFileUpload(files[0], selectedLanguage);
         }
     };
 
     const handleFileSelect = (e) => {
         if (e.target.files.length > 0) {
-            onFileUpload(e.target.files[0]);
+            onFileUpload(e.target.files[0], selectedLanguage);
+        }
+    };
+
+    const handleTextSubmit = () => {
+        if (textInput.trim() && onTextSubmit) {
+            onTextSubmit(textInput, selectedLanguage);
+            setTextInput('');
+        }
+    };
+
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleTextSubmit();
         }
     };
 
@@ -51,7 +67,7 @@ const ChatInterface = ({ user, onFileUpload, isProcessing, messages }) => {
                         </div>
                         <h2 className="text-xl font-semibold">Welcome, {user?.displayName}!</h2>
                         <p className="max-w-md text-center">
-                            Upload a document (PDF, DOCX) to get an Amharic summary and listen to it.
+                            Upload a document or enter text to get a summary in Amharic or Oromiffa with audio playback.
                         </p>
                     </div>
                 )}
@@ -64,8 +80,8 @@ const ChatInterface = ({ user, onFileUpload, isProcessing, messages }) => {
                         className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                         <div className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${msg.role === 'user'
-                                ? 'bg-green-600 text-white rounded-br-none'
-                                : 'bg-white border border-gray-100 rounded-bl-none'
+                            ? 'bg-green-600 text-white rounded-br-none'
+                            : 'bg-white border border-gray-100 rounded-bl-none'
                             }`}>
                             {msg.type === 'file' && (
                                 <div className="flex items-center space-x-3 mb-2">
@@ -106,14 +122,29 @@ const ChatInterface = ({ user, onFileUpload, isProcessing, messages }) => {
             </div>
 
             {/* Input Area */}
-            <div className="mt-4">
+            <div className="mt-4 space-y-3">
+                {/* Language Selector */}
+                <div className="flex items-center space-x-2 bg-white p-3 rounded-xl border border-gray-200">
+                    <Languages className="w-5 h-5 text-green-600" />
+                    <label className="text-sm font-medium text-gray-700">Output Language:</label>
+                    <select
+                        value={selectedLanguage}
+                        onChange={(e) => setSelectedLanguage(e.target.value)}
+                        className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                        <option value="amharic">Amharic (አማርኛ)</option>
+                        <option value="oromiffa">Oromiffa (Afaan Oromoo)</option>
+                    </select>
+                </div>
+
+                {/* Input Area */}
                 <div
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                     className={`relative flex items-center p-2 rounded-2xl border-2 transition-all ${dragging
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-200 bg-white hover:border-green-300'
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 bg-white hover:border-300'
                         }`}
                 >
                     <input
@@ -132,12 +163,19 @@ const ChatInterface = ({ user, onFileUpload, isProcessing, messages }) => {
                         <Upload className="w-5 h-5" />
                     </button>
 
-                    <div className="flex-1 px-4 text-gray-400 text-sm">
-                        {dragging ? "Drop file here..." : "Drag & drop a file or click upload..."}
-                    </div>
+                    <textarea
+                        value={textInput}
+                        onChange={(e) => setTextInput(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder={dragging ? "Drop file here..." : "Type text to summarize or drag & drop a file..."}
+                        className="flex-1 px-4 py-3 text-sm bg-transparent border-none outline-none resize-none"
+                        rows="1"
+                        style={{ minHeight: '24px', maxHeight: '120px' }}
+                    />
 
                     <button
-                        disabled={!user || isProcessing}
+                        onClick={handleTextSubmit}
+                        disabled={!user || isProcessing || !textInput.trim()}
                         className="p-3 bg-green-600 text-white rounded-xl shadow-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                         <Send className="w-5 h-5" />

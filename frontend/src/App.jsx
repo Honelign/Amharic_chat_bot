@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { signInWithGoogle, logOut, auth, db } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { analyzeDocument } from './services/api';
+import { analyzeDocument, analyzeText } from './services/api';
 import ChatInterface from './components/ChatInterface';
 import { Bot, LogOut, Github } from 'lucide-react';
 
@@ -22,7 +22,7 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  const handleFileUpload = async (file) => {
+  const handleFileUpload = async (file, language = 'amharic') => {
     if (!user) {
       alert("Please login first!");
       return;
@@ -40,7 +40,7 @@ function App() {
 
     try {
       // 1. Send file directly to Backend for analysis and storage
-      const result = await analyzeDocument(file, user.uid);
+      const result = await analyzeDocument(file, user.uid, language);
 
       // 2. Add Assistant Message
       const assistantMsg = {
@@ -55,6 +55,44 @@ function App() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "Sorry, I encountered an error analyzing your document. Please try again."
+      }]);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleTextSubmit = async (text, language = 'amharic') => {
+    if (!user) {
+      alert("Please login first!");
+      return;
+    }
+
+    // Add user message immediately
+    const userMsg = {
+      role: 'user',
+      type: 'text',
+      content: text
+    };
+    setMessages(prev => [...prev, userMsg]);
+    setIsProcessing(true);
+
+    try {
+      // Send text to Backend for analysis
+      const result = await analyzeText(text, user.uid, language);
+
+      // Add Assistant Message
+      const assistantMsg = {
+        role: 'assistant',
+        content: result.summary,
+        audioUrl: result.audioUrl
+      };
+      setMessages(prev => [...prev, assistantMsg]);
+
+    } catch (error) {
+      console.error("Error:", error);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: "Sorry, I encountered an error analyzing your text. Please try again."
       }]);
     } finally {
       setIsProcessing(false);
@@ -108,6 +146,7 @@ function App() {
           <ChatInterface
             user={user}
             onFileUpload={handleFileUpload}
+            onTextSubmit={handleTextSubmit}
             isProcessing={isProcessing}
             messages={messages}
           />

@@ -24,12 +24,19 @@ function getModel() {
     return generativeModel;
 }
 
-async function summarizeDocument(fileBuffer, mimeType) {
+async function summarizeDocument(fileBuffer, mimeType, language = 'amharic') {
+    const languageMap = {
+        'amharic': 'Amharic (አማርኛ)',
+        'oromiffa': 'Oromiffa (Afaan Oromoo)'
+    };
+
+    const targetLanguage = languageMap[language] || languageMap['amharic'];
+
     const prompt = `You are a helpful assistant for Ethiopian users. You will be provided with a document. Your task is to:
     1. Read and analyze the core meaning of the document.
     2. Create a concise summary.
-    3. Translate that summary into natural-sounding Amharic.
-    4. Return ONLY the Amharic text.`;
+    3. Translate that summary into natural-sounding ${targetLanguage}.
+    4. Return ONLY the ${targetLanguage} text.`;
 
     try {
         const model = getModel();
@@ -61,12 +68,19 @@ async function summarizeDocument(fileBuffer, mimeType) {
     }
 }
 
-async function summarizeAndTranslate(text) {
+async function summarizeAndTranslate(text, language = 'amharic') {
+    const languageMap = {
+        'amharic': 'Amharic (አማርኛ)',
+        'oromiffa': 'Oromiffa (Afaan Oromoo)'
+    };
+
+    const targetLanguage = languageMap[language] || languageMap['amharic'];
+
     const prompt = `You are a helpful assistant for Ethiopian users. You will be provided with a document text. Your task is to:
     1. Analyze the core meaning of the document.
     2. Create a concise summary.
-    3. Translate that summary into natural-sounding Amharic.
-    4. Return ONLY the Amharic text.
+    3. Translate that summary into natural-sounding ${targetLanguage}.
+    4. Return ONLY the ${targetLanguage} text.
     
     Document Text:
     ${text}`;
